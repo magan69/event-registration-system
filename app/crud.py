@@ -4,8 +4,8 @@ from . import models, schemas
 
 
 # ============ Users ============
-def create_user(db: Session, user: schemas.UserCreate) -> models.User:
-    db_user = models.User(name=user.name, email=user.email)
+def create_user(db: Session, user: schemas.UserCreate, hashed_password: str) -> models.User:
+    db_user = models.User(name=user.name, email=user.email, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -114,18 +114,15 @@ def get_active_registration(db: Session, user_id: int, event_id: int) -> models.
     )
 
 
-def create_registration(db: Session, reg: schemas.RegistrationCreate, event: models.Event) -> models.Registration:
-    """Confirms the registration if capacity allows, otherwise waitlists it.
-
-    This is the core rule of the assignment: capacity is never exceeded.
-    """
-    confirmed_count = get_confirmed_count(db, reg.event_id)
+def create_registration(db: Session, user_id: int, event: models.Event) -> models.Registration:
+    """Confirms the registration if capacity allows, otherwise waitlists it."""
+    confirmed_count = get_confirmed_count(db, event.id)
     status = (
         models.RegistrationStatus.confirmed
         if confirmed_count < event.capacity
         else models.RegistrationStatus.waitlisted
     )
-    db_reg = models.Registration(user_id=reg.user_id, event_id=reg.event_id, status=status)
+    db_reg = models.Registration(user_id=user_id, event_id=event.id, status=status)
     db.add(db_reg)
     db.commit()
     db.refresh(db_reg)

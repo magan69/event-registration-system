@@ -10,6 +10,7 @@ from .models import RegistrationStatus
 class UserCreate(BaseModel):
     name: str = Field(..., min_length=1)
     email: EmailStr
+    password: str = Field(..., min_length=6, max_length=72)
 
 
 class UserOut(BaseModel):
@@ -20,6 +21,10 @@ class UserOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 # ---------- Events ----------
 class EventCreate(BaseModel):
@@ -54,9 +59,7 @@ class EventOut(BaseModel):
 
 # ---------- Registrations ----------
 class RegistrationCreate(BaseModel):
-    user_id: int
     event_id: int
-
 
 class RegistrationOut(BaseModel):
     id: int

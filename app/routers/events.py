@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from ..deps import get_current_user
 
 from .. import crud, schemas
 from ..database import get_db
@@ -8,7 +9,11 @@ router = APIRouter(prefix="/events", tags=["Events"])
 
 
 @router.post("/", response_model=schemas.EventOut, status_code=201)
-def create_event(event: schemas.EventCreate, db: Session = Depends(get_db)):
+def create_event(
+    event: schemas.EventCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     db_event = crud.create_event(db, event)
     return crud.event_to_out(db, db_event)
 
@@ -28,7 +33,12 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{event_id}", response_model=schemas.EventOut)
-def update_event(event_id: int, updates: schemas.EventUpdate, db: Session = Depends(get_db)):
+def update_event(
+    event_id: int,
+    updates: schemas.EventUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     event = crud.update_event(db, event_id, updates)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -36,7 +46,11 @@ def update_event(event_id: int, updates: schemas.EventUpdate, db: Session = Depe
 
 
 @router.delete("/{event_id}", status_code=204)
-def delete_event(event_id: int, db: Session = Depends(get_db)):
+def delete_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     event = crud.delete_event(db, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")

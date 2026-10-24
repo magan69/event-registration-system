@@ -1,153 +1,128 @@
-# Event Registration System — Backend API
+# Event Registration System: Backend API
 
-A REST API that lets users register for events with limited capacity. Built with
-**FastAPI**, **SQLAlchemy**, and **SQLite**.
+A REST API for a college event platform. Users can sign up, log in, and register for events that have limited capacity. When an event is full, new registrations go to a waitlist automatically, and when someone cancels, the longest-waiting person on the waitlist is confirmed.
 
-Built for the ACM Web Team 2026–27 Backend assignment (Task 4: Event Registration System).
+Built by Magan shandilya as a Backend project for the TechSpace Tech Team recruitment. This is a backend-only project, so there is no UI. The API is tested through the auto-generated Swagger docs.
 
 ## Features
 
-**Minimum requirements (from assignment brief):**
-- Add and manage events (create, list, view, update, delete)
-- Users can register for events
-- Live tracking of registered participant count per event
-- Registrations are automatically blocked once an event's capacity is reached
-- All data (events, users, registrations) persisted in a database (SQLite)
-
-**Bonus features implemented:**
-- **Waitlist**: once an event is full, new registrations are automatically
-  placed on a waitlist instead of being rejected outright.
-- **Cancellation**: users can cancel a registration. If a *confirmed* spot
-  opens up, the longest-waiting waitlisted user is automatically promoted.
+- Sign up and log in with **hashed passwords** (bcrypt) and **JWT** authentication
+- Full CRUD for events, each with a capacity limit
+- Register for an event and cancel a registration
+- **Capacity is never exceeded**: when an event is full, the registration is set to `waitlisted`
+- **Waitlist promotion**: cancelling a confirmed registration promotes the earliest waitlisted user
+- **No duplicate registrations**: a user cannot hold two active registrations for the same event
+- A user can only view or cancel **their own** registrations
+- Input validation (Pydantic) and proper error responses (400, 401, 403, 404)
+- Interactive API docs with Swagger UI at `/docs`
 
 ## Tech Stack
 
-- **Python 3.10+**
-- **FastAPI** — web framework
-- **SQLAlchemy** — ORM
-- **SQLite** — database (single file, zero setup)
-- **Uvicorn** — ASGI server
+- Python
+- FastAPI (web framework)
+- SQLAlchemy (ORM) with SQLite (database)
+- Pydantic (validation)
+- bcrypt (password hashing) and PyJWT (tokens)
+- python-dotenv (environment variables)
+- Uvicorn (server)
 
 ## Project Structure
 
 ```
 event-registration-system/
 ├── app/
-│   ├── main.py              # FastAPI app + route registration
-│   ├── database.py          # DB engine/session setup
-│   ├── models.py            # SQLAlchemy ORM models
-│   ├── schemas.py           # Pydantic request/response schemas
-│   ├── crud.py               # Business logic (capacity checks, waitlist)
+│   ├── main.py            # app entry point
+│   ├── database.py        # database connection
+│   ├── models.py          # database tables
+│   ├── schemas.py         # request/response validation
+│   ├── crud.py            # business logic (capacity, waitlist)
+│   ├── security.py        # password hashing and JWT creation
+│   ├── deps.py            # get_current_user (token check)
 │   └── routers/
+│       ├── auth.py
 │       ├── users.py
 │       ├── events.py
 │       └── registrations.py
+├── screenshot/            # API screenshots
 ├── requirements.txt
+├── .env.example
 └── README.md
 ```
 
-## Setup & Run
+## How to Run
 
-1. **Clone the repo and enter the folder**
-   ```bash
-   git clone <your-repo-url>
+1. Clone the repo and open the folder:
+   ```
+   git clone https://github.com/magan69/event-registration-system.git
    cd event-registration-system
    ```
-
-2. **Create a virtual environment** (recommended)
-   ```bash
-   python -m venv venv
-   source venv/bin/activate      # Windows: venv\Scripts\activate
+2. Create and activate a virtual environment:
    ```
-
-3. **Install dependencies**
-   ```bash
+   python -m venv venv
+   venv\Scripts\activate          # Windows
+   source venv/bin/activate       # Mac / Linux
+   ```
+3. Install dependencies:
+   ```
    pip install -r requirements.txt
    ```
-
-4. **Run the server**
-   ```bash
+4. Create your `.env` file. Copy `.env.example` to `.env`, then replace the value with your own random key:
+   ```
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+   Your `.env` should look like this:
+   ```
+   SECRET_KEY=your_generated_key_here
+   ```
+5. Start the server:
+   ```
    uvicorn app.main:app --reload
    ```
+6. Open the API docs at **http://127.0.0.1:8000/docs**. The SQLite database file is created automatically on first run.
 
-5. **Open the interactive API docs**
-   Go to **http://127.0.0.1:8000/docs** in your browser. This is auto-generated
-   by FastAPI (Swagger UI) — you can test every endpoint directly from here,
-   which is also perfect for taking your submission screenshots.
+## Using the API
 
-   A database file `event_registration.db` is created automatically on first run.
+1. `POST /auth/signup` to create an account.
+2. `POST /auth/login` to get an access token. In Swagger, click **Authorize** (top right), enter your email as `username` and your password, and every protected request will then send the token for you.
+3. `POST /events/` to create an event with a `capacity`.
+4. `POST /registrations/` with `{"event_id": 1}` to register. The response status is `confirmed` or `waitlisted`.
 
 ## API Endpoints
 
-### Users
-| Method | Endpoint          | Description        |
-|--------|-------------------|---------------------|
-| POST   | `/users/`         | Create a user       |
-| GET    | `/users/`         | List all users      |
-| GET    | `/users/{id}`     | Get a single user   |
+A lock means a valid token is required.
 
-### Events
-| Method | Endpoint                      | Description                          |
-|--------|-------------------------------|---------------------------------------|
-| POST   | `/events/`                    | Create an event                       |
-| GET    | `/events/`                    | List all events (with live counts)    |
-| GET    | `/events/{id}`                | Get a single event                    |
-| PUT    | `/events/{id}`                | Update an event                       |
-| DELETE | `/events/{id}`                | Delete an event                       |
-| GET    | `/events/{id}/registrations`  | List all registrations for an event   |
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/auth/signup` | Create an account | No |
+| POST | `/auth/login` | Log in and get a JWT | No |
+| GET | `/users/` | List users | No |
+| GET | `/users/{user_id}` | Get one user | No |
+| POST | `/events/` | Create an event | Yes |
+| GET | `/events/` | List events with live counts | No |
+| GET | `/events/{event_id}` | Get one event | No |
+| PUT | `/events/{event_id}` | Update an event | Yes |
+| DELETE | `/events/{event_id}` | Delete an event | Yes |
+| GET | `/events/{event_id}/registrations` | List registrations of an event | No |
+| POST | `/registrations/` | Register for an event (confirmed or waitlisted) | Yes |
+| GET | `/registrations/{reg_id}` | Get your own registration | Yes |
+| DELETE | `/registrations/{reg_id}` | Cancel your registration (may promote the waitlist) | Yes |
 
-### Registrations
-| Method | Endpoint               | Description                                              |
-|--------|------------------------|------------------------------------------------------------|
-| POST   | `/registrations/`      | Register a user for an event (confirmed or waitlisted)     |
-| GET    | `/registrations/{id}`  | Get a single registration                                   |
-| DELETE | `/registrations/{id}`  | Cancel a registration (may promote a waitlisted user)        |
+## Error Responses
 
-## Example Usage
+| Code | Meaning |
+|---|---|
+| 400 | Bad request (e.g. duplicate email, already registered) |
+| 401 | Missing, invalid or expired token, or wrong login details |
+| 403 | Trying to cancel someone else's registration |
+| 404 | User, event or registration not found |
+| 422 | Invalid input (e.g. bad email format, capacity of 0) |
 
-**1. Create a user**
-```bash
-curl -X POST http://127.0.0.1:8000/users/ \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Aditi Sharma", "email": "aditi@example.com"}'
-```
+## Screenshots
 
-**2. Create an event with capacity 2**
-```bash
-curl -X POST http://127.0.0.1:8000/events/ \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Intro to Web Dev Workshop", "description": "Hands-on session", "location": "Lab 3", "date": "2026-09-20T10:00:00", "capacity": 2}'
-```
+API screenshots are in the `screenshot/` folder.
 
-**3. Register the user for the event**
-```bash
-curl -X POST http://127.0.0.1:8000/registrations/ \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 1, "event_id": 1}'
-```
+## Known Limitations
 
-**4. Register more users than capacity** → the 3rd registration for a
-capacity-2 event automatically comes back with `"status": "waitlisted"`
-instead of an error, and a 4th duplicate registration attempt for the same
-user+event returns `400 Bad Request`.
-
-**5. Cancel a confirmed registration** → the next waitlisted user for that
-event is automatically promoted to `"confirmed"`.
-
-## Design Notes
-
-- **Capacity enforcement**: `crud.create_registration` counts existing
-  `confirmed` registrations for an event and only confirms a new one if
-  `confirmed_count < capacity`; otherwise the registration is created with
-  `status="waitlisted"`. Capacity is never exceeded.
-- **No duplicate registrations**: a user cannot hold two active (confirmed
-  or waitlisted) registrations for the same event at once.
-- **Waitlist promotion**: cancelling a confirmed registration triggers a
-  check for the oldest waitlisted registration on that event, which is
-  promoted to confirmed — keeping the event as full as possible without
-  ever exceeding capacity.
-
-## Author
-
-Built for the ACM Student Chapter Web Team 2026–27, Backend Category —
-Task 4: Event Registration System.
+- Any logged-in user can create, update or delete events. Admin and student roles would be the next step.
+- If two users take the last spot at exactly the same moment, a race condition is possible. A production version would use a database transaction with row locking.
+- SQLite is used for simplicity. A larger deployment would use PostgreSQL.
